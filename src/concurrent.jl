@@ -17,14 +17,19 @@ Base.@propagate_inbounds Base.setindex!(
     i::Integer,
 ) = @atomic ds.nodes[i] = v
 
-function cas(ds::ConcurrentDisjointSet, i, expected, desired)
-    return @atomicreplace ds.nodes[i] expected => desired
+Base.@propagate_inbounds function cas(
+    ds::ConcurrentDisjointSet,
+    idx,
+    expected,
+    desired,
+)
+    return @atomicreplace ds.nodes[idx] expected => desired
 end
 
 function same_set(ds::ConcurrentDisjointSet, i::Integer, j::Integer)
     u = find(ds, i)
     v = find(ds, j)
-    while u ≠ v
+    @inbounds while u ≠ v
         w = ds[parent(u)]
         if u == w
             return false
@@ -52,8 +57,8 @@ link(ds::ConcurrentDisjointSet, args...) = link_byrank(ds, args...)
 
 function find_naive(ds::ConcurrentDisjointSet, i::Integer)
     u = ds[i]
-    v = ds[parent(u)]
-    while u ≠ v
+    @inbounds v = ds[parent(u)]
+    @inbounds while u ≠ v
         u = v
         v = ds[parent(u)]
     end
@@ -62,9 +67,9 @@ end
 
 function find_split(ds::ConcurrentDisjointSet, i::Integer)
     u = ds[i]
-    v = ds[parent(u)]
-    w = ds[parent(v)]
-    while u ≠ w
+    @inbounds v = ds[parent(u)]
+    @inbounds w = ds[parent(v)]
+    @inbounds while u ≠ w
         cas(ds, i, u, v)
         i = parent(u)
         u = v
@@ -76,9 +81,9 @@ end
 
 function find_split2(ds::ConcurrentDisjointSet, i::Integer)
     u = ds[i]
-    v = ds[parent(u)]
-    w = ds[parent(v)]
-    while u ≠ w
+    @inbounds v = ds[parent(u)]
+    @inbounds w = ds[parent(v)]
+    @inbounds while u ≠ w
         result = cas(ds, i, u, v)
         v = ds[parent(u)]
         w = ds[parent(v)]
@@ -95,25 +100,25 @@ function find_split2(ds::ConcurrentDisjointSet, i::Integer)
 end
 
 function link_byindex(ds::ConcurrentDisjointSet, u::Node, v::Node)
-    if parent(u) < parent(v)
-        cas(ds, parent(u), u, v)
+    return if u < v
+        @inbounds cas(ds, parent(u), u, v)
     else
-        cas(ds, parent(v), v, u)
+        @inbounds cas(ds, parent(v), v, u)
     end
 end
 
 function link_byrank(ds::ConcurrentDisjointSet, u::Node, v::Node)
     r = rank(u)
     s = rank(v)
-    if r < s
-        cas(ds, parent(u), u, Node(parent(v), r))
+    return if r < s
+        @inbounds cas(ds, parent(u), u, Node(parent(v), r))
     elseif r > s
-        cas(ds, parent(v), v, Node(parent(u), s))
-    elseif parent(u) < parent(v)
+        @inbounds cas(ds, parent(v), v, Node(parent(u), s))
+    elseif u < v
         # note : these don't link but union! will attempt to link again
         # which will end up in one of the above cases!
-        cas(ds, parent(u), u, Node(parent(u), r + 1))
+        @inbounds cas(ds, parent(u), u, Node(parent(u), r + 1))
     else
-        cas(ds, parent(v), v, Node(parent(v), s + 1))
+        @inbounds cas(ds, parent(v), v, Node(parent(v), s + 1))
     end
 end
