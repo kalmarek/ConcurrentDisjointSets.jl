@@ -64,11 +64,10 @@ function find_split(ds::ConcurrentDisjointSet, i::Integer)
     u = ds[i]
     v = ds[parent(u)]
     w = ds[parent(v)]
-    while v ≠ w
-        cas(ds, i, u, w)
-        i = parent(v)
-        u = v # u = uf[i]
-
+    while u ≠ w
+        cas(ds, i, u, v)
+        i = parent(u)
+        u = v
         v = ds[parent(u)]
         w = ds[parent(v)]
     end
@@ -79,15 +78,15 @@ function find_split2(ds::ConcurrentDisjointSet, i::Integer)
     u = ds[i]
     v = ds[parent(u)]
     w = ds[parent(v)]
-    while v ≠ w
-        result = cas(ds, i, u, w)
+    while u ≠ w
+        result = cas(ds, i, u, v)
         v = ds[parent(u)]
         w = ds[parent(v)]
 
         # if !result.success # conditional two-try splitting?
-        cas(ds, i, u, w)
-        i = parent(v)
-        u = v # u = uf[i]
+        cas(ds, i, u, v)
+        i = parent(u)
+        u = v
         v = ds[parent(u)]
         w = ds[parent(v)]
         # end

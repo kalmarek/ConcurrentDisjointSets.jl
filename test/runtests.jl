@@ -48,6 +48,78 @@ using Test
         @test collect(U) == [1, 3, 4, 5]
     end
 
+    @testset "compressing, halving, splitting" begin
+        function example_DS(DS, N)
+            U = DS(N)
+            for i in 2:N
+                U[i] = CDS.Node(i - 1)
+            end
+            return U
+        end
+
+        @testset "sequential" begin
+            N = 8
+            dU = example_DS(CDS.DisjointSet, N)
+
+            CDS.find_compress(dU, N)
+            # all pointing to CDS.Node(1)
+            @test all(dU[i] == CDS.Node(1) for i in 1:N)
+
+            dU = example_DS(CDS.DisjointSet, N)
+            CDS.find_halve(dU, N)
+            # 1 ← 2 ← 4 ← 6 ← 8
+            #       ↖   ↖   ↖
+            #         3   5   7
+            @test dU[8] == dU[7] == CDS.Node(6)
+            @test dU[6] == dU[5] == CDS.Node(4)
+            @test dU[4] == dU[3] == CDS.Node(2)
+            @test dU[2] == dU[1] == CDS.Node(1)
+
+            dU = example_DS(CDS.DisjointSet, N)
+            CDS.find_split(dU, N)
+            # 1 ← 2 ← 4 ← 6 ← 8
+            #   ↖
+            #     3 ← 5 ← 7
+            @test dU[8] == CDS.Node(6)
+            @test dU[6] == CDS.Node(4)
+            @test dU[4] == CDS.Node(2)
+            @test dU[2] == CDS.Node(1)
+
+            @test dU[7] == CDS.Node(5)
+            @test dU[5] == CDS.Node(3)
+            @test dU[3] == CDS.Node(1)
+        end
+        @testset "concurrent" begin
+            N = 8
+            dU = example_DS(CDS.ConcurrentDisjointSet, N)
+
+            CDS.find_split(dU, N)
+            # 1 ← 2 ← 4 ← 6 ← 8
+            #   ↖
+            #     3 ← 5 ← 7
+            @test dU[8] == CDS.Node(6)
+            @test dU[6] == CDS.Node(4)
+            @test dU[4] == CDS.Node(2)
+            @test dU[2] == CDS.Node(1)
+
+            @test dU[7] == CDS.Node(5)
+            @test dU[5] == CDS.Node(3)
+            @test dU[3] == CDS.Node(1)
+
+            CDS.find_split2(dU, N)
+            # 1 ← 2 ← 4 ← 6 ← 8
+            #   ↖
+            #     3 ← 5 ← 7
+            @test dU[8] == CDS.Node(6)
+            @test dU[6] == CDS.Node(4)
+            @test dU[4] == CDS.Node(2)
+            @test dU[2] == CDS.Node(1)
+
+            @test dU[7] == CDS.Node(5)
+            @test dU[5] == CDS.Node(3)
+            @test dU[3] == CDS.Node(1)
+        end
+    end
+
     include("correctness.jl")
 end
-

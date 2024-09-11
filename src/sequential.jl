@@ -57,9 +57,8 @@ function find_split(ds::DisjointSet, i::Integer)
     u = ds[i]
     v = ds[parent(u)]
     w = ds[parent(v)]
-    while v ≠ w
-        ds[i] = w # u.parent = w
-        ## these are different
+    while u ≠ w # in the paper v ≠ w is a mistake
+        ds[i] = v # this is `u.parent = w` since `parent(v) == w`
         i = parent(u)
         u = v
         v = ds[parent(u)]
@@ -73,11 +72,9 @@ function find_halve(ds::DisjointSet, i::Integer)
     v = ds[parent(u)]
     w = ds[parent(v)]
     while v ≠ w
-        ds[i] = w # u.parent = w
-        ## these are different
-        u = w
+        ds[i] = v # u.parent = w
         i = parent(v)
-        #
+        u = w
         v = ds[parent(u)]
         w = ds[parent(v)]
     end
